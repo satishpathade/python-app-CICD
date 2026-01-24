@@ -2,21 +2,25 @@ pipeline {
     agent any
 
     environment {
-        SSH_CRED = 'python-key'
+        SSH_CRED   = 'python-key'
         SERVER_IP = '13.232.219.13'
         REMOTE_USER = 'ubuntu'
         APP_DIR = '/home/ubuntu/pythonapp'
-    } 
+        APP_NAME = 'python-app'
+    }
 
     stages {
-        stage('Clone Repo') {
+
+        stage('Clone Repository') {
             steps {
-                git url: 'https://github.com/satishpathade/python-app-CICD.git', branch: 'main'
+                // Pull latest code from GitHub
+            git url: 'https://github.com/satishpathade/python-app-CICD.git', branch: 'main'
             }
         }
 
-        stage('Deploy to Server') {
+        stage('Copy Files to Server') {
             steps {
+                // Create app directory and copy project files to EC2
                 sshagent(credentials: ["${SSH_CRED}"]) {
                     sh '''
                         ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${SERVER_IP} "mkdir -p ${APP_DIR}"
@@ -26,22 +30,30 @@ pipeline {
             }
         }
 
-        stage('Install & Run App') {
+        stage('Install Dependencies & Run App (PM2)') {
             steps {
-                sshagent(["${SSH_CRED}"]) {
-                    sh """
+                sshagent(credentials: ["${SSH_CRED}"]) {
+                    sh '''
                         ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${SERVER_IP} '
-                            sudo apt update &&
-                            sudo apt install -y python3-venv python3-pip &&
-                            cd ${APP_DIR} &&
-                            python3 -m venv venv &&
-                            source venv/bin/activate &&
-                            pip install --upgrade pip &&
-                            pip install -r requirements.txt &&
-                            nohup python3 app.py --host=0.0.0.0 > app.log 2>&1 &
-                            exit 0
+                            sudo apt update
+                            sudo apt install -y python3-venv python3-pip nodejs npm
+
+                            sudo npm install -g pm2
+
+                            cd ${APP_DIR}
+
+                            if [ ! -d "venv" ]; then
+                                python3 -m venv venv
+                            fi
+
+                            source venv/bin/activate
+                            pip install --upgrade pip
+                            pip install -r requirements.txt
+                            pm2 restart ${APP_NAME} || \
+                            pm2 start app.py --name ${APP_NAME} --interpreter ${APP_DIR}/venv/bin/python
+                            pm2 save
                         '
-                    """
+                    '''
                 }
             }
         }
