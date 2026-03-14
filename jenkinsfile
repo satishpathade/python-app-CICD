@@ -46,9 +46,8 @@ pipeline {
                                 python3 -m venv venv
                             fi
 
-                            source venv/bin/activate
-                            pip install --upgrade pip
-                            pip install -r requirements.txt
+                            ${APP_DIR}/venv/bin/pip install --upgrade pip
+                            ${APP_DIR}/venv/bin/pip install -r requirements.txt
                             pm2 restart ${APP_NAME} || \
                             pm2 start app.py --name ${APP_NAME} --interpreter ${APP_DIR}/venv/bin/python
                             pm2 save
