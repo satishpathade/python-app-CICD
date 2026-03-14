@@ -48,8 +48,9 @@ pipeline {
 
                             ${APP_DIR}/venv/bin/pip install --upgrade pip
                             ${APP_DIR}/venv/bin/pip install -r requirements.txt
-                            pm2 restart ${APP_NAME} || \
-                            pm2 start app.py --name ${APP_NAME} --interpreter ${APP_DIR}/venv/bin/python
+
+                            pm2 delete ${APP_NAME} || true
+                            pm2 start ${APP_DIR}/app.py --name ${APP_NAME} --interpreter ${APP_DIR}/venv/bin/python
                             pm2 save
                         '
                     '''
